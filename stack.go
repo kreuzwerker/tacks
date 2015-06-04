@@ -59,13 +59,17 @@ func (s Stack) Types() []string {
 
 	var (
 		nothing = struct{}{}
-		types   map[string]struct{}
+		types   = make(map[string]struct{})
 	)
 
-	for key, value := range s["Resources"].(Stack) {
+	for _, resource := range s["Resources"].(Stack) {
 
-		if key == _type {
-			types[value.(string)] = nothing
+		for key, value := range resource.(Stack) {
+
+			if key == _type {
+				types[value.(string)] = nothing
+			}
+
 		}
 
 	}

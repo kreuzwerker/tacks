@@ -15,7 +15,7 @@ defaults: &defaults
   tags:
     foo: bar
   variables:
-    a: { cmd: "ls -l1 | sort | head -n 1" }
+    a: { cmd: "ls -1 M* | sort -f | head -n 1" }
     b: { cmd: "whoami" }
     c: { env: "PWD" }
     d: { cmd: "date +\"%s\"", cast: "int" }

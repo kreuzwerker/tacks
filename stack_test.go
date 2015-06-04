@@ -1,7 +1,6 @@
 package tacks
 
 import (
-	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -15,8 +14,6 @@ func readStack(a *assert.Assertions, file string) Stack {
 
 	out, err := ioutil.ReadFile(file)
 	a.NoError(err)
-
-	fmt.Println(string(out))
 
 	err = yaml.Unmarshal(out, &stack)
 	a.NoError(err)

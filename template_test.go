@@ -7,13 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigEvaluate(t *testing.T) {
-
-	logger.Level = logrus.DebugLevel
 
 	assert := assert.New(t)
 
@@ -58,7 +55,7 @@ func TestConfigEvaluate(t *testing.T) {
 		}
 
 		assert.Regexp("tacks$", conf.values["c"])
-		assert.EqualValues(time.Now().Unix(), conf.values["d"])
+		assert.InDelta(time.Now().Unix(), conf.values["d"], 1.0)
 
 	}
 

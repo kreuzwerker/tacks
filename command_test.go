@@ -11,8 +11,8 @@ import (
 var (
 	bad     = `false`
 	missing = `no_such_binary_exists`
-	good1   = `ls -1 | sort -r | head -n 1`
-	good2   = `ls -1 | sort | head -n 1`
+	good1   = `ls -1 | sort -fr | head -n 1`
+	good2   = `ls -1 | sort -f | head -n 1`
 )
 
 func TestCommand(t *testing.T) {
@@ -24,7 +24,7 @@ func TestCommand(t *testing.T) {
 	c := Command(good1)
 	res, err := c.Value()
 
-	assert.Equal("vars_test.go", res)
+	assert.Equal("values_test.go", res)
 	assert.NoError(err)
 
 	c = Command(bad)
