@@ -1,4 +1,4 @@
-#! Shebang -> create with command "tacks news"
+#! /tmp/tacks run --dry-run
 name: tournado
 version: panda
 
