@@ -3,6 +3,7 @@ package tacks
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 )
 
 type Stack map[interface{}]interface{}
@@ -18,6 +19,66 @@ func (s Stack) MarshalText() ([]byte, error) {
 	} else {
 		return text, nil
 	}
+
+}
+
+func (s Stack) IsIamCapabilitiesRequired() bool {
+
+	capabilityIamRequired := []string{
+		"AWS::CloudFormation::Stack",
+		"AWS::IAM::AccessKey",
+		"AWS::IAM::Group",
+		"AWS::IAM::InstanceProfile",
+		"AWS::IAM::Policy",
+		"AWS::IAM::Role",
+		"AWS::IAM::User",
+		"AWS::IAM::UserToGroupAddition",
+	}
+
+	var types = s.Types()
+
+	for _, req := range capabilityIamRequired {
+
+		for _, got := range types {
+
+			if req == got {
+				return true
+			}
+
+		}
+
+	}
+
+	return false
+
+}
+
+func (s Stack) Types() []string {
+
+	const _type = "Type"
+
+	var (
+		nothing = struct{}{}
+		types   map[string]struct{}
+	)
+
+	for key, value := range s["Resources"].(Stack) {
+
+		if key == _type {
+			types[value.(string)] = nothing
+		}
+
+	}
+
+	var sortedTypes sort.StringSlice
+
+	for key, _ := range types {
+		sortedTypes = append(sortedTypes, key)
+	}
+
+	sortedTypes.Sort()
+
+	return sortedTypes
 
 }
 
