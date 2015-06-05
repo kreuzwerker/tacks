@@ -5,4 +5,4 @@ go:
 install:
   - make install
 script:
-  - go test
+  - make test
