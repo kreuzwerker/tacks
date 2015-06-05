@@ -1,56 +1,51 @@
 package tacks
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"runtime"
+	"strings"
 
-	"text/template"
-	"github.com/spf13/cast"
 	"gopkg.in/yaml.v2"
 )
 
-type Config struct {
-	Environments map[string]Environment
+type Callback func(Document) error
+
+type Template struct {
+	Environments map[string]*Environment
 	Name         string
-	Stack        Stack
+	Stack        map[interface{}]interface{}
 	Version      string
-	values       map[string]interface{}
 }
 
 type Environment struct {
 	Ask             bool
-	DeleteOnFailure bool
+	DeleteOnFailure bool `yaml:"delete_on_failure"`
 	Mode            string
+	Name            string `yaml:"-"`
 	Pre             []Command
 	Post            []Command
+	Region          string
+	StackName       string
 	Timeout         uint8
 	Tags            map[string]string
-	Variables       map[string]Variable
-}
-
-type Runtime struct {
-	Environment string
-	Variables   map[string]interface{}
-}
-
-type Variable struct {
-	Cast     string
-	Cmd      Command
-	Constant string
-	Env      Env
+	Variables       map[string]struct {
+		Cmd      Command
+		Constant string
+		Env      Env
+	}
 }
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
-func NewConfigFromReader(r io.Reader) (*Config, error) {
+func NewTemplateFromReader(r io.Reader) (*Template, error) {
 
-	var c Config
+	const null = ""
+
+	var t Template
 
 	in, err := ioutil.ReadAll(r)
 
@@ -58,15 +53,29 @@ func NewConfigFromReader(r io.Reader) (*Config, error) {
 		return nil, err
 	}
 
-	if err := yaml.Unmarshal(in, &c); err != nil {
+	if err := yaml.Unmarshal(in, &t); err != nil {
 		return nil, err
 	}
 
-	return &c, nil
+	for key, value := range t.Environments {
+
+		if value.StackName == null {
+			value.StackName = strings.Join([]string{
+				key,
+				t.Name,
+				t.Version,
+			}, "-")
+		}
+
+		value.Name = key
+
+	}
+
+	return &t, nil
 
 }
 
-func (c *Config) runHooks(label string, hooks []Command) error {
+func (t *Template) runHooks(label string, hooks []Command) error {
 
 	for idx, cmd := range hooks {
 
@@ -82,46 +91,24 @@ func (c *Config) runHooks(label string, hooks []Command) error {
 
 }
 
-func (c *Config) runStack(r Runtime) (string, error) {
+func (t *Template) Evaluate(environment string, cb Callback) error {
 
 	const null = ""
 
-	tpl := template.New("_root")
-	tpl.Funcs(Functions)
-
-	if out, err := c.Stack.MarshalText(); err != nil {
-		return null, err
-	} else if tpl, err := tpl.Parse(string(out)); err != nil {
-		return null, err
-	} else {
-
-		var buf bytes.Buffer
-
-		tpl.ParseName = c.Name
-		err := tpl.Execute(&buf, r)
-
-		return buf.String(), err
-
-	}
-
-}
-
-func (c *Config) Evaluate(environment string) (Environment, error) {
-
-	const null = ""
-
-	env, ok := c.Environments[environment]
+	env, ok := t.Environments[environment]
 
 	if !ok {
-		return env, fmt.Errorf("no such environment %q", environment)
+		return fmt.Errorf("no such environment %q", environment)
 	}
 
-	if err := c.runHooks("pre", env.Pre); err != nil {
-		return env, err
+	if err := t.runHooks("pre", env.Pre); err != nil {
+		return err
 	}
 
-	var values = make(Values, len(env.Variables))
-	c.values = make(map[string]interface{}, len(values))
+	var (
+		values    = make(Values, len(env.Variables))
+		variables = make(map[string]interface{}, len(values))
+	)
 
 	for key, value := range env.Variables {
 
@@ -137,53 +124,36 @@ func (c *Config) Evaluate(environment string) (Environment, error) {
 
 	}
 
-	// evaluate and ...
+	// evaluate
 	for key, value := range values.Evaluate() {
 
 		logger.Debugf("Evaluated variable %q: %v", key, value)
 
 		// return on first error
 		if err := value.Error; err != nil {
-			return env, err
+			return err
 		}
 
-		// ... cast
-		var (
-			casted interface{}
-			target = env.Variables[key].Cast
-		)
-
-		if target == null {
-			casted = value.Value
-		} else if target == "int" {
-			casted = cast.ToInt(value.Value)
-		} else {
-			return env, fmt.Errorf("unknown cast target %q for variable %q", target, key)
-		}
-
-		if target != null {
-			logger.Debugf("Casted variable %q to %q: %v (%T)", key, target, casted, casted)
-		}
-
-		c.values[key] = casted
+		variables[key] = value.Value
 
 	}
 
-	runtime := Runtime{
-		Environment: environment,
-		Variables:   c.values, // TODO: remove from config state
+	document := Document{
+		stack:       t.Stack,
+		Environment: env,
+		Variables:   variables,
 	}
 
-	if stack, err := c.runStack(runtime); err != nil {
-		return env, err
-	} else {
-		fmt.Fprintln(os.Stderr, stack)
+	logger.Infof("Running stack with variables %v", variables)
+
+	if err := cb(document); err != nil {
+		return err
 	}
 
-	if err := c.runHooks("post", env.Post); err != nil {
-		return env, err
+	if err := t.runHooks("post", env.Post); err != nil {
+		return err
 	}
 
-	return env, nil
+	return nil
 
 }

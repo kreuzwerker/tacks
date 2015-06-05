@@ -8,25 +8,26 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func readStack(a *assert.Assertions, file string) Stack {
+func readDocument(a *assert.Assertions, file string) Document {
 
-	var stack Stack
+	var document Document
 
 	out, err := ioutil.ReadFile(file)
 	a.NoError(err)
 
-	err = yaml.Unmarshal(out, &stack)
+	err = yaml.Unmarshal(out, &document.stack)
 	a.NoError(err)
+	a.NotEmpty(document.stack)
 
-	return stack
+	return document
 
 }
 
-func TestStackIamRequired(t *testing.T) {
+func TestDocumentIamRequired(t *testing.T) {
 
 	assert := assert.New(t)
 
-	stack := readStack(assert, "test/opsworks-vpc-elb.json")
+	document := readDocument(assert, "test/opsworks-vpc-elb.json")
 
 	types := []string{
 		"AWS::EC2::EIP",
@@ -52,16 +53,16 @@ func TestStackIamRequired(t *testing.T) {
 		"AWS::OpsWorks::Stack",
 	}
 
-	assert.Equal(types, stack.Types())
-	assert.Equal(true, stack.IsIamCapabilitiesRequired())
+	assert.Equal(types, document.Types())
+	assert.Equal(true, document.IsIamCapabilitiesRequired())
 
 }
 
-func TestStackIamNotRequired(t *testing.T) {
+func TestDocumentIamNotRequired(t *testing.T) {
 
 	assert := assert.New(t)
 
-	stack := readStack(assert, "test/redshift-vpc.json")
+	document := readDocument(assert, "test/redshift-vpc.json")
 
 	types := []string{
 		"AWS::EC2::SecurityGroup",
@@ -72,16 +73,16 @@ func TestStackIamNotRequired(t *testing.T) {
 		"AWS::Redshift::ClusterSubnetGroup",
 	}
 
-	assert.Equal(types, stack.Types())
-	assert.Equal(false, stack.IsIamCapabilitiesRequired())
+	assert.Equal(types, document.Types())
+	assert.Equal(false, document.IsIamCapabilitiesRequired())
 
 }
 
-func TestStackMarshalText(t *testing.T) {
+func TestDocumentParse(t *testing.T) {
 
 	assert := assert.New(t)
 
-	in := []byte(`{
+	in := `{
   "a": "b",
   "c": [
     0,
@@ -93,15 +94,15 @@ func TestStackMarshalText(t *testing.T) {
     },
     3
   ]
-}`)
+}`
 
-	var stack Stack
+	var document Document
 
-	if err := yaml.Unmarshal(in, &stack); err != nil {
+	if err := yaml.Unmarshal([]byte(in), &document.stack); err != nil {
 		assert.NoError(err)
 	}
 
-	out, err := stack.MarshalText()
+	out, err := document.Parse()
 	assert.NoError(err)
 
 	assert.Equal(in, out)

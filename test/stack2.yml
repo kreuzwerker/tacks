@@ -1,0 +1,50 @@
+#! /tmp/tacks run --dry-run
+name: tacks
+version: initial
+
+defaults: &defaults
+  delete_on_failure: true
+  mode: upsert
+  post:
+    - "echo done >> /tmp/post.log"
+  region: eu-west-1
+  timeout: 15
+  tags:
+    foo: bar
+  variables:
+    a: { cmd: "ls -1 M* | sort -f | head -n 1" }
+    b: { cmd: "whoami" }
+    c: { env: "PWD" }
+    d: { cmd: "date +\"%s\"", cast: "int" }
+
+environments:
+
+  production:
+    <<: *defaults
+    ask: false
+    mode: create
+    variables:
+      b: { constant: "dennis" }
+
+  staging:
+    <<: *defaults
+
+stack:
+  {
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Resources": {
+      "dns1": {
+        "Type": "AWS::Route53::RecordSet",
+        "Properties": {
+          "Comment": "Created by {{ .Variables.b }} via {{ .Environment.Name }} at {{ now }}",
+          "Name": "tacks.kreuzwerker.de.",
+          "HostedZoneName": "kreuzwerker.de.",
+          "Type": "A",
+          "ResourceRecords": [
+            "127.0.0.1"
+          ],
+          "TTL": 60
+        }
+      }
+    }
+  }

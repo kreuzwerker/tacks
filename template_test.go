@@ -4,13 +4,14 @@ import (
 	"io/ioutil"
 	"os"
 	"os/user"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConfigEvaluate(t *testing.T) {
+func TestTemplateEvaluate(t *testing.T) {
 
 	assert := assert.New(t)
 
@@ -19,43 +20,47 @@ func TestConfigEvaluate(t *testing.T) {
 
 	assert.NoError(err)
 
-	conf, err := NewConfigFromReader(file)
+	conf, err := NewTemplateFromReader(file)
 	assert.NoError(err)
-
-	assert.Empty(conf.values)
-	assert.NotEmpty(conf.Stack)
 
 	user, _ := user.Current()
 
 	for _, name := range []string{"production", "staging"} {
 
-		env, err := conf.Evaluate(name)
+		err := conf.Evaluate(name, func(d Document) error {
+
+			assert.Equal(name, d.Environment.Name)
+
+			if name == "staging" {
+				assert.Equal("upsert", d.Environment.Mode)
+			} else {
+				assert.Equal("create", d.Environment.Mode)
+			}
+
+			assert.Equal(map[string]string{
+				"foo": "bar",
+			}, d.Environment.Tags)
+
+			assert.EqualValues(15, d.Environment.Timeout)
+
+			assert.EqualValues("Makefile", d.Variables["a"])
+
+			if name == "staging" {
+				assert.EqualValues(user.Username, d.Variables["b"])
+			} else {
+				assert.EqualValues("dennis", d.Variables["b"])
+			}
+
+			vd, _ := strconv.Atoi(d.Variables["d"].(string))
+
+			assert.Regexp("tacks$", d.Variables["c"])
+			assert.InDelta(time.Now().Unix(), vd, 1.0)
+
+			return nil
+
+		})
+
 		assert.NoError(err, "failure in env %q")
-
-		assert.Equal(name == "production", env.Ask)
-
-		if name == "staging" {
-			assert.Equal("upsert", env.Mode)
-		} else {
-			assert.Equal("create", env.Mode)
-		}
-
-		assert.Equal(map[string]string{
-			"foo": "bar",
-		}, env.Tags)
-
-		assert.EqualValues(15, env.Timeout)
-
-		assert.EqualValues("Makefile", conf.values["a"])
-
-		if name == "staging" {
-			assert.EqualValues(user.Username, conf.values["b"])
-		} else {
-			assert.EqualValues("dennis", conf.values["b"])
-		}
-
-		assert.Regexp("tacks$", conf.values["c"])
-		assert.InDelta(time.Now().Unix(), conf.values["d"], 1.0)
 
 	}
 
