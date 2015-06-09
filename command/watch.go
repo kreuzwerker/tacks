@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	cf "github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/dustin/go-humanize"
+	"github.com/kreuzwerker/tacks"
 	"github.com/kreuzwerker/tacks/command/term"
 	table "github.com/olekukonko/tablewriter"
 )
@@ -30,6 +31,8 @@ func (w *Watch) Run() error {
 	if w.Stackname == null {
 		return errors.New("no stack name given")
 	}
+
+	tacks.Logger().Infof("Watching stack %s", w.Stackname)
 
 	if w.Refresh == 0 {
 		w.Refresh = DefaultRefresh

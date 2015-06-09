@@ -14,7 +14,6 @@ import (
 
 type Run struct {
 	document    *tacks.Document
-	Ask         bool
 	DryRun      bool
 	Environment string
 	Filename    string
@@ -46,11 +45,7 @@ func (r *Run) Run() error {
 		action = r.runDry
 	}
 
-	if err := tpl.Evaluate(r.Environment, action); err != nil {
-		return err
-	}
-
-	return nil
+	return tpl.Evaluate(r.Environment, action)
 
 }
 
@@ -135,7 +130,7 @@ func (r *Run) run(d tacks.Document) error {
 
 }
 
-func (r *Run) runCreate(client *cf.CloudFormation, d tacks.Document, stack string) error { // TODO: maybe move document & stack into run-state, also environment
+func (r *Run) runCreate(client *cf.CloudFormation, d tacks.Document, stack string) error {
 
 	e := d.Environment
 
@@ -176,18 +171,46 @@ func (r *Run) runCreate(client *cf.CloudFormation, d tacks.Document, stack strin
 		TimeoutInMinutes: aws.Long(int64(timeoutInMinutes)),
 	})
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 
 }
 
 func (r *Run) runUpdate(client *cf.CloudFormation, d tacks.Document, stack string) error {
-	return nil
+
+	e := d.Environment
+
+	tacks.Logger().Infof("Updating stack %s", e.StackName)
+
+	var (
+		capabilities []*string
+	)
+
+	if d.IsIamCapabilitiesRequired() {
+		capabilities = append(capabilities, aws.String("CAPABILITY_IAM"))
+	}
+
+	_, err := client.UpdateStack(&cf.UpdateStackInput{
+		Capabilities: capabilities,
+		StackName:    aws.String(e.StackName),
+		TemplateBody: aws.String(stack),
+	})
+
+	return err
+
 }
 
 func (r *Run) runUpsert(client *cf.CloudFormation, d tacks.Document, stack string) error {
-	return nil
+
+	e := d.Environment
+
+	resp, _ := client.DescribeStacks(&cf.DescribeStacksInput{
+		StackName: aws.String(e.StackName),
+	})
+
+	if len(resp.Stacks) == 0 {
+		return r.runCreate(client, d, stack)
+	} else {
+		return r.runUpdate(client, d, stack)
+	}
+
 }

@@ -41,6 +41,25 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 }
 
+// name generates a stack name out of a number of non-empty parts
+func name(parts ...string) string {
+
+	const null = ""
+
+	var notNull []string
+
+	for _, value := range parts {
+
+		if value != null {
+			notNull = append(notNull, value)
+		}
+
+	}
+
+	return strings.Join(notNull, "-")
+
+}
+
 func NewTemplateFromReader(r io.Reader) (*Template, error) {
 
 	const null = ""
@@ -60,11 +79,7 @@ func NewTemplateFromReader(r io.Reader) (*Template, error) {
 	for key, value := range t.Environments {
 
 		if value.StackName == null {
-			value.StackName = strings.Join([]string{
-				key,
-				t.Name,
-				t.Version,
-			}, "-")
+			value.StackName = name(key, t.Name, t.Version)
 		}
 
 		value.Name = key
