@@ -1,4 +1,9 @@
-.PHONY: install test
+.PHONY: clean install test
+
+out/tacks: clean
+	mkdir -p out
+	go build -o out/tacks -ldflags "-X main.build `git rev-parse --short HEAD`" bin/tacks.go
+	ln -sf $(PWD)/out/tacks /usr/local/bin/tacks
 
 install:
 	go get -u github.com/awslabs/aws-sdk-go/aws
