@@ -179,11 +179,11 @@ func jsonify(in interface{}) (interface{}, error) {
 
 		return out, nil
 
-	case float64, float32, int64, int, string:
+	case float64, float32, int64, int, string, bool:
 		return cast, nil
 
 	default:
-		return nil, fmt.Errorf("unhandled value %v (%T)", cast, cast)
+		return nil, fmt.Errorf("unhandled jsonify value %v (%T)", cast, cast)
 
 	}
 
