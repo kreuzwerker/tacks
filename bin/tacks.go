@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -16,10 +17,12 @@ const (
 )
 
 var build string
+var exitF func(...interface{})
 
 func main() {
 
 	var logger = tacks.Logger()
+	exitF = logger.Fatal
 
 	var (
 		dryRun      bool
@@ -30,7 +33,8 @@ func main() {
 	)
 
 	root := &cobra.Command{
-		Use: "tacks",
+		Use:   "tacks",
+		Short: "Tacks provides executable CloudFormation stacks",
 	}
 
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
@@ -55,23 +59,26 @@ func main() {
 			}
 
 			run := &command.Run{
-				Ask:         true,
 				DryRun:      dryRun,
 				Environment: environment,
 				Filename:    filename,
 				Region:      region,
 			}
 
-			command.Foreground(run, logger.Fatal)
+			command.Foreground(run, exitF)
 
-			watch := &command.Watch{
-				Stackname: run.Document().Environment.StackName,
-				Region:    run.Region,
+			if !dryRun {
+
+				watch := &command.Watch{
+					Stackname: run.Document().Environment.StackName,
+					Region:    run.Region,
+				}
+
+				command.Background(watch, exitF)
+
+				term.Wait()
+
 			}
-
-			command.Background(watch, logger.Fatal)
-
-			term.Wait()
 
 		},
 	}
@@ -98,7 +105,7 @@ func main() {
 				Refresh:   refresh,
 			}
 
-			command.Background(watch, logger.Fatal)
+			command.Background(watch, exitF)
 
 			term.Wait()
 
@@ -112,8 +119,17 @@ func main() {
 
 	}
 
+	version := &cobra.Command{
+		Use:   "version",
+		Short: "Print the version information of tacks",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("Tacks 1.0 (%s)\n", build)
+		},
+	}
+
 	root.AddCommand(run)
 	root.AddCommand(watch)
+	root.AddCommand(version)
 
 	if err := root.Execute(); err != nil {
 		logger.Fatal(err)
