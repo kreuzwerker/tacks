@@ -116,10 +116,6 @@ func (t *Template) Evaluate(environment string, cb Callback) error {
 		return fmt.Errorf("no such environment %q", environment)
 	}
 
-	if err := t.runHooks("pre", env.Pre); err != nil {
-		return err
-	}
-
 	env_vars := make(map[string]string)
 	env_vars["_REGION"] = env.Region
 	env_vars["_NAME"] = env.Name
@@ -133,6 +129,10 @@ func (t *Template) Evaluate(environment string, cb Callback) error {
 	logger.Debugf("Setting environment variables from stack metadata %q", env_vars)
 	for key, value := range env_vars {
 		os.Setenv(key, value)
+	}
+
+	if err := t.runHooks("pre", env.Pre); err != nil {
+		return err
 	}
 
 	var (
