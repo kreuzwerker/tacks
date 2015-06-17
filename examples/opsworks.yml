@@ -18,8 +18,8 @@ environments:
     <<: *defaults
     variables:
       VPCStackName: { constant: "staging-tacks-vpc-example" }
-      ServiceRole: { cmd: 'aws cloudformation --region eu-west-1 describe-stack-resource --stack-name staging-tacks-vpc-example --logical-resource-id ServiceRole | jq -r ".StackResourceDetail.PhysicalResourceId"'}
-      InstanceProfile: { cmd: 'aws cloudformation --region eu-west-1 describe-stack-resource --stack-name staging-tacks-vpc-example --logical-resource-id InstanceProfile | jq -r ".StackResourceDetail.PhysicalResourceId"'}
+      ServiceRole: { cmd: 'aws cloudformation --region $_REGION describe-stack-resource --stack-name staging-tacks-vpc-example --logical-resource-id ServiceRole | jq -r ".StackResourceDetail.PhysicalResourceId"'}
+      InstanceProfile: { cmd: 'aws cloudformation --region $_REGION describe-stack-resource --stack-name staging-tacks-vpc-example --logical-resource-id InstanceProfile | jq -r ".StackResourceDetail.PhysicalResourceId"'}
 
 stack:
   {
