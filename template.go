@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"runtime"
 	"strings"
 
@@ -83,7 +84,6 @@ func NewTemplateFromReader(r io.Reader) (*Template, error) {
 		}
 
 		value.Name = key
-
 	}
 
 	return &t, nil
@@ -114,6 +114,21 @@ func (t *Template) Evaluate(environment string, cb Callback) error {
 
 	if !ok {
 		return fmt.Errorf("no such environment %q", environment)
+	}
+
+	env_vars := make(map[string]string)
+	env_vars["_REGION"] = env.Region
+	env_vars["_NAME"] = env.Name
+	env_vars["_MODE"] = env.Mode
+	env_vars["_STACKNAME"] = env.StackName
+
+	for key, value := range env.Tags {
+		env_vars["_TAG_"+key] = value
+	}
+
+	logger.Debugf("Setting environment variables from stack metadata %q", env_vars)
+	for key, value := range env_vars {
+		os.Setenv(key, value)
 	}
 
 	if err := t.runHooks("pre", env.Pre); err != nil {

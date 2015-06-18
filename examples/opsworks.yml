@@ -1,0 +1,136 @@
+#! /usr/bin/env tacks run
+name: tacks-opsworks-example
+
+defaults: &defaults
+  delete_on_failure: true
+  mode: upsert
+  region: eu-west-1
+  timeout: 60
+  tags:
+    Owner: JN
+    Project: OpsWorks Example
+
+environments:
+  production:
+    <<: *defaults
+    ask: true
+  staging:
+    <<: *defaults
+    variables:
+      VPCStackName: { constant: "staging-tacks-vpc-example" }
+      ServiceRole: { cmd: 'aws cloudformation --region $_REGION describe-stack-resource --stack-name staging-tacks-vpc-example --logical-resource-id ServiceRole | jq -r ".StackResourceDetail.PhysicalResourceId"'}
+      InstanceProfile: { cmd: 'aws cloudformation --region $_REGION describe-stack-resource --stack-name staging-tacks-vpc-example --logical-resource-id InstanceProfile | jq -r ".StackResourceDetail.PhysicalResourceId"'}
+
+stack:
+  {
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "{{ .Environment.Name }} VPC",
+    "Outputs": {
+    },
+    "Parameters": {
+      "Environment": {
+        "Description": "Name of the environment for this VPC",
+        "Type": "String",
+        "Default": "{{ .Environment.Name }}",
+        "AllowedPattern": "production|staging|sandbox[a-z-]*"
+      },
+      "VPCStackName": {
+        "Type": "String",
+        "Description": "VPC stack name to connect to",
+        "Default": "{{ .Variables.VPCStackName }}"
+      },
+      "KeyName": {
+        "Description": "Name of an existing EC2 KeyPair to enable SSH access OpsWorks instances",
+        "Type": "String",
+        "MinLength": "1",
+        "MaxLength": "64",
+        "Default": "Jan Nabbefeld",
+        "AllowedPattern": "[-_ a-zA-Z0-9]*",
+        "ConstraintDescription": "can contain only alphanumeric characters, spaces, dashes and underscores."
+      },
+      "Color": {
+        "Type": "String",
+        "Description": "Color of Stack in OpsWorks-UI",
+        "Default": "rgb(45, 114, 184)"
+      },
+      "GitRepositoryUrl": {
+        "Type": "String",
+        "Description": "Git-Repository containing Chef-Cookbooks",
+        "Default": "git@github.com:kreuzwerker/tacks.git"
+      },
+      "GitRevision": {
+        "Type": "String",
+        "Description": "Git-Revision, branch or tag",
+        "Default": "master"
+      },
+      "ServiceRole": {
+        "Type": "String",
+        "Default": "{{ .Variables.ServiceRole }}"
+      },
+      "InstanceProfile": {
+        "Type": "String",
+        "Default": "{{ .Variables.InstanceProfile }}"
+      }
+    },
+    "Resources": {
+      "VPCStackInfo": {
+        "Type": "Custom::VPCStackInfo",
+        "Properties": {
+          "ServiceToken": { "Fn::Join": [ "", [ "arn:aws:lambda:", { "Ref": "AWS::Region" }, ":", { "Ref": "AWS::AccountId" }, ":function:", "LookupStackOutputs" ] ] },
+          "StackName": {
+            "Ref": "VPCStackName"
+          }
+        }
+      },
+      "OpsWorksStack": {
+        "Type": "AWS::OpsWorks::Stack",
+        "Properties": {
+          "Name": {
+            "Ref": "Environment"
+          },
+          "VpcId": {
+            "Fn::GetAtt": [ "VPCStackInfo", "VPC" ]
+          },
+          "ServiceRoleArn": {
+            "Fn::Join": [ "", [ "arn:aws:iam::", { "Ref": "AWS::AccountId" }, ":role/", { "Ref": "ServiceRole" } ] ] 
+          },
+          "HostnameTheme": "Clouds",
+          "DefaultOs": "Amazon Linux 2015.03",
+          "DefaultSshKeyName": {
+            "Ref": "KeyName"
+          },
+          "DefaultRootDeviceType": "ebs",
+          "DefaultInstanceProfileArn": {
+            "Fn::Join": [ "", [ "arn:aws:iam::", { "Ref": "AWS::AccountId" }, ":instance-profile/", { "Ref": "InstanceProfile" } ] ] 
+          },
+          "DefaultSubnetId": {
+            "Fn::GetAtt": [ "VPCStackInfo", "PublicAlphaSubnetId" ]
+          },
+          "ConfigurationManager": {
+            "Name": "Chef",
+            "Version": "11.10"
+          },
+          "ChefConfiguration": {
+            "BerkshelfVersion": "3.2.0",
+            "ManageBerkshelf": true
+          },
+          "Attributes": {
+            "Color": {
+              "Ref": "Color"
+            }
+          },
+          "UseCustomCookbooks": true,
+          "UseOpsworksSecurityGroups": false,
+          "CustomCookbooksSource": {
+            "Type": "git",
+            "Url": {
+             "Ref": "GitRepositoryUrl"
+            },
+            "Revision": {
+             "Ref": "GitRevision"
+            }
+          }
+        }
+      }
+    }
+  }
