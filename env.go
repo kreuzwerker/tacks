@@ -5,8 +5,10 @@ import (
 	"os"
 )
 
+// Env represents an environment variable key
 type Env string
 
+// Value returns the value of the environment key defined
 func (e Env) Value() (interface{}, error) {
 
 	const nothing = ""

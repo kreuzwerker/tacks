@@ -6,10 +6,15 @@ import (
 	"strings"
 )
 
+// NoCommandOutput can be returned as Value for commands executed purely for
+// their side-effects
 const NoCommandOutput = `""`
 
+// Command represents a bash command
 type Command string
 
+// Value runs a command (in pipefail mode) through bash and returns the result,
+// removing the trailing newline
 func (c Command) Value() (interface{}, error) {
 
 	const nothing = ""

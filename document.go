@@ -8,12 +8,16 @@ import (
 	"text/template"
 )
 
+// Document represents an Environment-specific stack including
+// associated variables
 type Document struct {
 	stack       map[interface{}]interface{}
 	Environment *Environment
 	Variables   map[string]interface{}
 }
 
+// IsIamCapabilitiesRequired denotes the presence of types in the Document
+// that would require this flag be present during stack creation
 func (d Document) IsIamCapabilitiesRequired() bool {
 
 	capabilityIamRequired := []string{
@@ -45,6 +49,8 @@ func (d Document) IsIamCapabilitiesRequired() bool {
 
 }
 
+// Parse generates pretty-printed JSON from the stack and evaluates it as a
+// golang text template
 func (d Document) Parse() (string, error) {
 
 	const null = ""
@@ -82,13 +88,14 @@ func (d Document) Parse() (string, error) {
 	}
 
 	buf := new(bytes.Buffer)
-
 	err = tpl.Execute(buf, d)
 
 	return buf.String(), err
 
 }
 
+// Types returns a sorted string slice of all CloudFormation types defined in
+// the stack
 func (d Document) Types() []string {
 
 	const _type = "Type"
@@ -120,7 +127,7 @@ func (d Document) Types() []string {
 
 	var sortedTypes sort.StringSlice
 
-	for key, _ := range types {
+	for key := range types {
 		sortedTypes = append(sortedTypes, key)
 	}
 
