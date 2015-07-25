@@ -13,13 +13,7 @@ import (
 
 type Callback func(Document) error
 
-type Template struct {
-	Environments map[string]*Environment
-	Name         string
-	Stack        map[interface{}]interface{}
-	Version      string
-}
-
+// Environment represents all metadata of a stack
 type Environment struct {
 	Ask             bool
 	DeleteOnFailure bool `yaml:"delete_on_failure"`
@@ -36,6 +30,14 @@ type Environment struct {
 		Constant string
 		Env      Env
 	}
+}
+
+// Template represents the stack template and all environments
+type Template struct {
+	Environments map[string]*Environment
+	Name         string
+	Stack        map[interface{}]interface{}
+	Version      string
 }
 
 func init() {

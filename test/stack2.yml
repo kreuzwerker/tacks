@@ -1,10 +1,10 @@
-#! /tmp/tacks run --dry-run
+#! /usr/bin/env tacks run --dry-run
 name: tacks
 version: initial
 
 defaults: &defaults
   delete_on_failure: true
-  mode: upsert
+  mode: create
   post:
     - "echo done >> /tmp/post.log"
   region: eu-west-1
