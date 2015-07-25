@@ -16,8 +16,11 @@ const (
 	null          = ""
 )
 
-var build string
-var exitF func(...interface{})
+var (
+	build   string
+	version string
+	exitF   func(...interface{})
+)
 
 func main() {
 
@@ -123,7 +126,7 @@ func main() {
 		Use:   "version",
 		Short: "Print the version information of tacks",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("Tacks 1.0 (%s)\n", build)
+			fmt.Printf("Tacks %s (%s)\n", version, build)
 		},
 	}
 
