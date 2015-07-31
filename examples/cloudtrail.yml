@@ -1,0 +1,100 @@
+#! /usr/bin/env tacks run -e production
+name: cloudtrail
+
+environments:
+  production:
+    delete_on_failure: true
+    mode: upsert
+    region: eu-west-1
+
+stack:
+  {
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Cloudtrail",
+    "Outputs": {
+      "logbucket": {
+        "Value": { "Ref": "s3bLogs" }
+      }
+    },
+    "Resources": {
+      "ct": {
+        "DependsOn" : [ "s3bpLogs" ],
+        "Type" : "AWS::CloudTrail::Trail",
+        "Properties": {
+          "IncludeGlobalServiceEvents": true,
+          "IsLogging": true,
+          "S3BucketName": { "Ref": "s3bLogs" }
+        }
+      },
+      "s3bLogs": {
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+          "LifecycleConfiguration": {
+             "Rules": [
+               {
+                 "Id": "Expire",
+                 "Status": "Enabled",
+                 "ExpirationInDays": "90"
+               }
+             ]
+           },
+          "Tags": [ { "Key": "role", "Value": "logging" } ]
+        }
+      },
+      "s3bpLogs": {
+        "DependsOn" : [ "s3bLogs" ],
+        "Type": "AWS::S3::BucketPolicy",
+        "Properties": {
+          "Bucket": { "Ref": "s3bLogs" },
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "AWSCloudTrailAclCheck20131101",
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": [
+            				"arn:aws:iam::086441151436:root",
+            				"arn:aws:iam::113285607260:root",
+            				"arn:aws:iam::388731089494:root",
+            				"arn:aws:iam::284668455005:root",
+            				"arn:aws:iam::903692715234:root",
+            				"arn:aws:iam::216624486486:root",
+            				"arn:aws:iam::859597730677:root",
+            				"arn:aws:iam::814480443879:root",
+            				"arn:aws:iam::035351147821:root"
+                  ]
+                },
+                "Action": "s3:GetBucketAcl",
+                "Resource": { "Fn::Join": [ ":::", [ "arn:aws:s3", { "Ref": "s3bLogs" } ] ] }
+              },
+              {
+                "Sid": "AWSCloudTrailWrite",
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": [
+            				"arn:aws:iam::086441151436:root",
+            				"arn:aws:iam::113285607260:root",
+            				"arn:aws:iam::388731089494:root",
+            				"arn:aws:iam::284668455005:root",
+            				"arn:aws:iam::903692715234:root",
+            				"arn:aws:iam::216624486486:root",
+            				"arn:aws:iam::859597730677:root",
+            				"arn:aws:iam::814480443879:root",
+            				"arn:aws:iam::035351147821:root"
+                  ]
+                },
+                "Action": "s3:PutObject",
+                "Resource": { "Fn::Join": [ "", [ "arn:aws:s3:::", { "Ref": "s3bLogs" }, "/AWSLogs/", { "Ref": "AWS::AccountId" }, "/*" ] ] },
+                "Condition": {
+                  "StringEquals": {
+                    "s3:x-amz-acl": "bucket-owner-full-control"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
